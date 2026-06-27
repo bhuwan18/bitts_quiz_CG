@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { gameplayStart, gameplayStop, showMidgameAd } from "@/lib/crazygames-sdk";
 
 type Question = {
@@ -45,6 +46,8 @@ function shuffleOrder(length: number, seed: number): number[] {
 
 export default function QuizPlayer({ quiz }: { quiz: Quiz }) {
   const router = useRouter();
+  const { status } = useSession();
+  const isGuest = status === "unauthenticated";
   const [current, setCurrent] = useState(0);
   const [selected, setSelected] = useState<number | null>(null); // visual index
   const [answers, setAnswers] = useState<{ questionId: string; selectedIndex: number }[]>([]);
@@ -110,13 +113,17 @@ export default function QuizPlayer({ quiz }: { quiz: Quiz }) {
     if (!canMarkRead || explanationMarked || markingRead) return;
     setMarkingRead(true);
     try {
-      const res = await fetch("/api/explanation-read", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ questionId: question.id }),
-      });
-      const data = await res.json();
-      setExplanationCoins(data.coinsEarned ?? 0);
+      if (!isGuest) {
+        const res = await fetch("/api/explanation-read", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ questionId: question.id }),
+        });
+        const data = await res.json();
+        setExplanationCoins(data.coinsEarned ?? 0);
+      } else {
+        setExplanationCoins(0);
+      }
     } catch {
       setExplanationCoins(0);
     } finally {
@@ -142,22 +149,27 @@ export default function QuizPlayer({ quiz }: { quiz: Quiz }) {
     } else {
       setSubmitting(true);
       try {
-        const res = await fetch("/api/attempt", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ quizId: quiz.id, answers: newAnswers }),
-        });
-        const data = await res.json();
-        // Signal gameplay end and show midgame ad before revealing results
         gameplayStop();
         await showMidgameAd();
-        if (data.mysticalQuizletsGranted?.length > 0) {
-          setMysticalQueue(data.mysticalQuizletsGranted);
-          setShowingMystical(true);
+
+        if (isGuest) {
+          // Guest mode: count correct answers client-side, no DB writes
+          const score = newAnswers.filter((a, i) => a.selectedIndex === quiz.questions[i].correctIndex).length;
+          setResult({ score, total, coinsEarned: 0 });
+        } else {
+          const res = await fetch("/api/attempt", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ quizId: quiz.id, answers: newAnswers }),
+          });
+          const data = await res.json();
+          if (data.mysticalQuizletsGranted?.length > 0) {
+            setMysticalQueue(data.mysticalQuizletsGranted);
+            setShowingMystical(true);
+          }
+          setResult(data);
         }
-        setResult(data);
       } catch {
-        gameplayStop();
         setResult({ score: 0, total, coinsEarned: 0 });
       } finally {
         setSubmitting(false);
@@ -251,15 +263,23 @@ export default function QuizPlayer({ quiz }: { quiz: Quiz }) {
         <p className="text-gray-400 mb-6 md:text-lg">
           You scored <span className="text-white font-bold">{result.score}/{result.total}</span> ({pct}%)
         </p>
-        <div className="inline-flex items-center gap-2 bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 px-5 py-2.5 rounded-xl mb-4 text-lg font-bold">
-          🪙 +{result.coinsEarned} coins earned
-        </div>
-
-        {result.coinsEarned === 0 && result.score > 0 && (
-          <div className="mb-6 bg-orange-500/10 border border-orange-500/30 rounded-2xl p-4 text-left">
-            <p className="text-orange-300 font-semibold text-sm mb-1">🚫 Daily coin limit reached</p>
-            <p className="text-gray-400 text-xs">You answered correctly but earned no coins — your daily cap is full. Come back tomorrow to keep earning!</p>
+        {isGuest ? (
+          <div className="mb-6 bg-indigo-500/10 border border-indigo-500/30 rounded-2xl p-5 text-center">
+            <p className="text-indigo-300 font-semibold mb-1">🎮 Log in to save your progress</p>
+            <p className="text-gray-400 text-sm">Sign into CrazyGames to earn coins, collect Quizlets, and climb the leaderboard.</p>
           </div>
+        ) : (
+          <>
+            <div className="inline-flex items-center gap-2 bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 px-5 py-2.5 rounded-xl mb-4 text-lg font-bold">
+              🪙 +{result.coinsEarned} coins earned
+            </div>
+            {result.coinsEarned === 0 && result.score > 0 && (
+              <div className="mb-6 bg-orange-500/10 border border-orange-500/30 rounded-2xl p-4 text-left">
+                <p className="text-orange-300 font-semibold text-sm mb-1">🚫 Daily coin limit reached</p>
+                <p className="text-gray-400 text-xs">You answered correctly but earned no coins — your daily cap is full. Come back tomorrow to keep earning!</p>
+              </div>
+            )}
+          </>
         )}
 
         <div className="flex gap-3 justify-center flex-wrap">
@@ -269,12 +289,14 @@ export default function QuizPlayer({ quiz }: { quiz: Quiz }) {
           >
             More Quizzes
           </button>
-          <button
-            onClick={() => router.push("/marketplace")}
-            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-colors font-medium"
-          >
-            Open a Pack 🎴
-          </button>
+          {!isGuest && (
+            <button
+              onClick={() => router.push("/marketplace")}
+              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-colors font-medium"
+            >
+              Open a Pack 🎴
+            </button>
+          )}
         </div>
       </div>
     );

@@ -1,5 +1,4 @@
 import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Nunito } from "next/font/google";
 import Sidebar from "@/components/layout/Sidebar";
@@ -11,19 +10,30 @@ import PushSubscriptionManager from "@/components/layout/PushSubscriptionManager
 import { NotificationsProvider } from "@/components/layout/NotificationsProvider";
 import { FeedProvider } from "@/components/layout/FeedProvider";
 import SplashScreen from "@/components/SplashScreen";
+import GuestBanner from "@/components/GuestBanner";
 
 const nunito = Nunito({ subsets: ["latin"], variable: "--font-nunito", display: "swap" });
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
-  if (!session) redirect("/login");
+
+  // Guests get a stripped layout — no sidebar, no auth-dependent providers
+  if (!session) {
+    return (
+      <AudioProvider>
+        <div className={`flex min-h-screen flex-col ${nunito.variable}`} style={{ background: "var(--main-bg)" }}>
+          <GuestBanner />
+          <main className="flex-1">{children}</main>
+        </div>
+      </AudioProvider>
+    );
+  }
 
   return (
     <AudioProvider>
       <NotificationsProvider>
       <FeedProvider>
       <div className={`flex min-h-screen ${nunito.variable}`}>
-        {/* Sidebar hidden on mobile */}
         <div className="hidden md:flex sticky top-0 h-screen">
           <Sidebar />
         </div>
