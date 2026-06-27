@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { gameplayStart, gameplayStop, showMidgameAd } from "@/lib/crazygames-sdk";
+import { useAudio } from "@/lib/audio-context";
 
 type Question = {
   id: string;
@@ -48,6 +49,7 @@ export default function QuizPlayer({ quiz }: { quiz: Quiz }) {
   const router = useRouter();
   const { status } = useSession();
   const isGuest = status === "unauthenticated";
+  const { pause: pauseAudio, resume: resumeAudio } = useAudio();
   const [current, setCurrent] = useState(0);
   const [selected, setSelected] = useState<number | null>(null); // visual index
   const [answers, setAnswers] = useState<{ questionId: string; selectedIndex: number }[]>([]);
@@ -150,7 +152,7 @@ export default function QuizPlayer({ quiz }: { quiz: Quiz }) {
       setSubmitting(true);
       try {
         gameplayStop();
-        await showMidgameAd();
+        await showMidgameAd(pauseAudio, resumeAudio);
 
         if (isGuest) {
           // Guest mode: count correct answers client-side, no DB writes

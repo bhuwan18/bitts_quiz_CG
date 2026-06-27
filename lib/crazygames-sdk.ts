@@ -8,6 +8,7 @@ declare global {
           gameLoadingStop(): void;
           gameplayStart(): void;
           gameplayStop(): void;
+          addEventHandler(event: "mute" | "unmute", callback: () => void): void;
         };
         ad: {
           requestAd(
@@ -82,16 +83,30 @@ export function gameplayStop() {
   getSDK()?.game.gameplayStop();
 }
 
-/** Shows a midgame ad. Always resolves (even on error) so the game continues. */
-export function showMidgameAd(): Promise<void> {
+/**
+ * Shows a midgame ad. Always resolves so the game continues.
+ * Calls onMute when the ad starts and onUnmute when it ends/errors.
+ */
+export function showMidgameAd(onMute?: () => void, onUnmute?: () => void): Promise<void> {
   return new Promise((resolve) => {
     const sdk = getSDK();
     if (!sdk) { resolve(); return; }
     sdk.ad.requestAd("midgame", {
-      adFinished: resolve,
-      adError: () => resolve(),
+      adStarted: () => onMute?.(),
+      adFinished: () => { onUnmute?.(); resolve(); },
+      adError: () => { onUnmute?.(); resolve(); },
     });
   });
+}
+
+/** Register a callback for when the CrazyGames platform mutes the game. */
+export function onSDKMute(callback: () => void) {
+  getSDK()?.game.addEventHandler("mute", callback);
+}
+
+/** Register a callback for when the CrazyGames platform unmutes the game. */
+export function onSDKUnmute(callback: () => void) {
+  getSDK()?.game.addEventHandler("unmute", callback);
 }
 
 export async function getCGUserToken(): Promise<string | null> {

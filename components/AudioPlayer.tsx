@@ -3,12 +3,22 @@
 import { useAudio } from "@/lib/audio-context";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { initSDK, onSDKMute, onSDKUnmute } from "@/lib/crazygames-sdk";
 
 export default function AudioPlayer() {
   const { enabled, volume, playing, toggle, setVolume, pause, resume } = useAudio();
   const pathname = usePathname();
   const [expanded, setExpanded] = useState(false);
   const prevPausedRef = useRef(false);
+
+  // Register CrazyGames platform mute/unmute handlers once SDK is ready
+  useEffect(() => {
+    initSDK().then((ready) => {
+      if (!ready) return;
+      onSDKMute(pause);
+      onSDKUnmute(resume);
+    }).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-pause during quiz play pages (/quiz/[id])
   useEffect(() => {
