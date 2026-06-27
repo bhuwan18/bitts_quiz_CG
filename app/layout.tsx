@@ -5,6 +5,8 @@ import { SessionProvider } from "next-auth/react";
 import ThemeProvider from "@/components/ThemeProvider";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import Script from "next/script";
+import CrazyGamesProvider from "@/components/CrazyGamesProvider";
 
 const jakarta = Nunito({ subsets: ["latin"], variable: "--font-jakarta", weight: ["400", "500", "600", "700"] });
 const grotesk = Rubik({ subsets: ["latin"], variable: "--font-grotesk", weight: ["700", "800"] });
@@ -21,8 +23,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${jakarta.variable} ${grotesk.variable} font-sans antialiased min-h-screen`}>
+        <Script src="https://sdk.crazygames.com/crazygames-sdk-v3.js" strategy="afterInteractive" />
         <ThemeProvider>
-          <SessionProvider>{children}</SessionProvider>
+          <SessionProvider>
+            <CrazyGamesProvider>{children}</CrazyGamesProvider>
+          </SessionProvider>
         </ThemeProvider>
         <Analytics />
         <SpeedInsights />

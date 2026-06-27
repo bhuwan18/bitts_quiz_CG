@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { gameplayStart, gameplayStop, showMidgameAd } from "@/lib/crazygames-sdk";
 
 type Question = {
   id: string;
@@ -61,6 +62,12 @@ export default function QuizPlayer({ quiz }: { quiz: Quiz }) {
   const shuffledOrders = useMemo(() => {
     const seed = Date.now();
     return quiz.questions.map((q, qi) => shuffleOrder(q.options.length, seed + qi * 137));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Signal CrazyGames SDK when quiz starts and ends
+  useEffect(() => {
+    gameplayStart();
+    return () => { gameplayStop(); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const question = quiz.questions[current];
@@ -141,12 +148,16 @@ export default function QuizPlayer({ quiz }: { quiz: Quiz }) {
           body: JSON.stringify({ quizId: quiz.id, answers: newAnswers }),
         });
         const data = await res.json();
+        // Signal gameplay end and show midgame ad before revealing results
+        gameplayStop();
+        await showMidgameAd();
         if (data.mysticalQuizletsGranted?.length > 0) {
           setMysticalQueue(data.mysticalQuizletsGranted);
           setShowingMystical(true);
         }
         setResult(data);
       } catch {
+        gameplayStop();
         setResult({ score: 0, total, coinsEarned: 0 });
       } finally {
         setSubmitting(false);
@@ -246,22 +257,8 @@ export default function QuizPlayer({ quiz }: { quiz: Quiz }) {
 
         {result.coinsEarned === 0 && result.score > 0 && (
           <div className="mb-6 bg-orange-500/10 border border-orange-500/30 rounded-2xl p-4 text-left">
-            <p className="text-orange-300 font-semibold text-sm mb-1">🚫 You hit your daily coin limit</p>
-            <p className="text-gray-400 text-xs mb-3">You answered correctly but earned no coins — your daily cap is full. Reset it or upgrade for a higher limit.</p>
-            <div className="flex gap-2 flex-wrap">
-              <button
-                onClick={() => router.push("/shop?tab=reset")}
-                className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-semibold rounded-lg transition-colors"
-              >
-                🔄 Reset limit — ₹100
-              </button>
-              <button
-                onClick={() => router.push("/shop")}
-                className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-lg transition-colors"
-              >
-                ⭐ Upgrade for higher cap
-              </button>
-            </div>
+            <p className="text-orange-300 font-semibold text-sm mb-1">🚫 Daily coin limit reached</p>
+            <p className="text-gray-400 text-xs">You answered correctly but earned no coins — your daily cap is full. Come back tomorrow to keep earning!</p>
           </div>
         )}
 
