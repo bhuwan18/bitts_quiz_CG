@@ -48,13 +48,7 @@ export function initSDK(): Promise<boolean> {
       const sdk = getSDK();
       if (!sdk) { resolve(false); return; }
       try {
-        sdk.init()
-          .then(() => {
-            // sdk.init() can resolve even on disabled domains, but leaves
-            // environment !== "initialized" and submodule getters throw.
-            resolve(sdk.environment === "initialized");
-          })
-          .catch(() => resolve(false));
+        sdk.init().then(() => resolve(true)).catch(() => resolve(false));
       } catch {
         resolve(false);
       }
@@ -81,19 +75,19 @@ export function initSDK(): Promise<boolean> {
 }
 
 export function gameLoadingStart() {
-  getSDK()?.game.loadingStart();
+  try { getSDK()?.game.loadingStart(); } catch {}
 }
 
 export function gameLoadingStop() {
-  getSDK()?.game.loadingStop();
+  try { getSDK()?.game.loadingStop(); } catch {}
 }
 
 export function gameplayStart() {
-  getSDK()?.game.gameplayStart();
+  try { getSDK()?.game.gameplayStart(); } catch {}
 }
 
 export function gameplayStop() {
-  getSDK()?.game.gameplayStop();
+  try { getSDK()?.game.gameplayStop(); } catch {}
 }
 
 /**
@@ -104,11 +98,11 @@ export function showMidgameAd(onMute?: () => void, onUnmute?: () => void): Promi
   return new Promise((resolve) => {
     const sdk = getSDK();
     if (!sdk) { resolve(); return; }
-    sdk.ad.requestAd("midgame", {
+    try { sdk.ad.requestAd("midgame", {
       adStarted: () => onMute?.(),
       adFinished: () => { onUnmute?.(); resolve(); },
       adError: () => { onUnmute?.(); resolve(); },
-    });
+    }); } catch { resolve(); }
   });
 }
 
@@ -119,10 +113,14 @@ export function showMidgameAd(onMute?: () => void, onUnmute?: () => void): Promi
  */
 export function onSDKAudioChange(callback: (muteAudio: boolean) => void): () => void {
   const sdk = getSDK();
-  if (!sdk?.game) return () => {};
-  const handler = (settings: { muteAudio: boolean }) => callback(settings.muteAudio);
-  sdk.game.addSettingsChangeListener(handler);
-  return () => sdk.game.removeSettingsChangeListener(handler);
+  if (!sdk) return () => {};
+  try {
+    const handler = (settings: { muteAudio: boolean }) => callback(settings.muteAudio);
+    sdk.game.addSettingsChangeListener(handler);
+    return () => { try { sdk.game.removeSettingsChangeListener(handler); } catch {} };
+  } catch {
+    return () => {};
+  }
 }
 
 /** Returns the CrazyGames user token if the user is logged in to CrazyGames, or null. */
