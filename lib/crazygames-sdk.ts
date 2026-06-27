@@ -30,18 +30,20 @@ function getSDK() {
   return typeof window !== "undefined" ? window.CrazyGames?.SDK ?? null : null;
 }
 
-/** Call once on app load. Resolves true when SDK is ready, false if unavailable. */
-export function initSDK(): Promise<boolean> {
-  return new Promise((resolve) => {
-    if (typeof window === "undefined") { resolve(false); return; }
+let _initPromise: Promise<boolean> | null = null;
 
+/** Initialises the SDK once and caches the promise — safe to call from multiple components. */
+export function initSDK(): Promise<boolean> {
+  if (typeof window === "undefined") return Promise.resolve(false);
+  if (_initPromise) return _initPromise;
+
+  _initPromise = new Promise((resolve) => {
     const tryInit = () => {
       const sdk = getSDK();
       if (!sdk) { resolve(false); return; }
       sdk.init().then(() => resolve(true)).catch(() => resolve(false));
     };
 
-    // SDK script may not have executed yet — poll briefly
     if (window.CrazyGames?.SDK) {
       tryInit();
     } else {
@@ -58,6 +60,8 @@ export function initSDK(): Promise<boolean> {
       }, 100);
     }
   });
+
+  return _initPromise;
 }
 
 export function gameplayStart() {

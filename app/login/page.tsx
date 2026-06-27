@@ -4,6 +4,7 @@ import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { initSDK, getCGUserToken } from "@/lib/crazygames-sdk";
 
 export default function LoginPage() {
   const { data: session } = useSession();
@@ -13,6 +14,23 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [adminError, setAdminError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [cgLoading, setCgLoading] = useState(false);
+
+  useEffect(() => {
+    if (session) { router.replace("/dashboard"); return; }
+
+    // Attempt CrazyGames SSO automatically when landing on this page
+    setCgLoading(true);
+    initSDK()
+      .then(async (ready) => {
+        if (!ready) { setCgLoading(false); return; }
+        const token = await getCGUserToken();
+        if (!token) { setCgLoading(false); return; }
+        await signIn("crazygames", { token, redirect: false });
+        router.replace("/dashboard");
+      })
+      .catch(() => setCgLoading(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (session) router.replace("/dashboard");
@@ -73,13 +91,17 @@ export default function LoginPage() {
           ))}
         </div>
 
-        {/* CrazyGames SSO note */}
+        {/* CrazyGames SSO */}
         <div className="w-full rounded-2xl p-5 border border-white/10 bg-white/5 text-center">
           <div className="text-3xl mb-2">🎮</div>
           <p className="text-white font-semibold mb-1">Sign in with CrazyGames</p>
           <p className="text-gray-400 text-sm">Use your CrazyGames account to save progress, earn coins, and collect Quizlets.</p>
-          <div className="mt-4 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-gray-500 text-sm">
-            CrazyGames login coming soon
+          <div className="mt-4 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm">
+            {cgLoading ? (
+              <span className="text-indigo-400 animate-pulse">Signing in with CrazyGames...</span>
+            ) : (
+              <span className="text-gray-500">Log in to CrazyGames to play with your account</span>
+            )}
           </div>
         </div>
 

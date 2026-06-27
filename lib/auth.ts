@@ -27,6 +27,55 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers: [
     CredentialsProvider({
+      id: "crazygames",
+      credentials: {
+        token: { label: "CrazyGames Token", type: "text" },
+      },
+      async authorize(credentials) {
+        const token = credentials?.token as string | undefined;
+        if (!token) return null;
+
+        // Verify token with CrazyGames API
+        // Docs: https://docs.crazygames.com/sdk/user-system/
+        const res = await fetch(
+          `https://sdk.crazygames.com/user/v1/verify?token=${encodeURIComponent(token)}`,
+          { cache: "no-store" }
+        );
+        if (!res.ok) return null;
+        const data = await res.json();
+        if (!data.success || !data.user?.userId) return null;
+
+        const cgUserId: string = data.user.userId;
+        const username: string = data.user.username ?? `cg_${cgUserId}`;
+        // Synthetic email keeps the existing @unique email constraint happy
+        const syntheticEmail = `cg_${cgUserId}@crazygames.internal`;
+
+        const user = await prisma.user.upsert({
+          where: { cgUserId },
+          update: { name: username },
+          create: {
+            cgUserId,
+            email: syntheticEmail,
+            name: username,
+            emailVerified: new Date(),
+            isAdmin: false,
+          },
+          select: { id: true, email: true, name: true, isPro: true, isMax: true, isBlacksmith: true, isLocked: true, proExpiresAt: true, maxExpiresAt: true, blacksmithExpiresAt: true },
+        });
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name ?? username,
+          isAdmin: false,
+          isPro: user.isPro && (!user.proExpiresAt || user.proExpiresAt > new Date()),
+          isMax: user.isMax && (!user.maxExpiresAt || user.maxExpiresAt > new Date()),
+          isBlacksmith: user.isBlacksmith && (!user.blacksmithExpiresAt || user.blacksmithExpiresAt > new Date()),
+          isLocked: user.isLocked,
+        };
+      },
+    }),
+    CredentialsProvider({
       id: "admin-credentials",
       credentials: {
         username: { label: "Username", type: "text" },

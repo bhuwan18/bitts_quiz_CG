@@ -61,6 +61,7 @@ model User {
   dailySpentReset      DateTime @default(now())
   isBlacksmith         Boolean   @default(false)
   blacksmithExpiresAt  DateTime?
+  cgUserId             String?   @unique
   quizletSubmissions   QuizletSubmission[]
   createdQuizlets      Quizlet[]
   friendStreaksAsA     FriendStreak[] @relation("FriendStreakA")

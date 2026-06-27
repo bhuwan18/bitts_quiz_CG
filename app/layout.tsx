@@ -7,6 +7,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import Script from "next/script";
 import CrazyGamesProvider from "@/components/CrazyGamesProvider";
+import CrazyGamesAuthProvider from "@/components/CrazyGamesAuthProvider";
 
 const jakarta = Nunito({ subsets: ["latin"], variable: "--font-jakarta", weight: ["400", "500", "600", "700"] });
 const grotesk = Rubik({ subsets: ["latin"], variable: "--font-grotesk", weight: ["700", "800"] });
@@ -26,7 +27,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Script src="https://sdk.crazygames.com/crazygames-sdk-v3.js" strategy="afterInteractive" />
         <ThemeProvider>
           <SessionProvider>
-            <CrazyGamesProvider>{children}</CrazyGamesProvider>
+            <CrazyGamesProvider>
+              <CrazyGamesAuthProvider>{children}</CrazyGamesAuthProvider>
+            </CrazyGamesProvider>
           </SessionProvider>
         </ThemeProvider>
         <Analytics />
