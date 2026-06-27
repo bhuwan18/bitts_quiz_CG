@@ -208,16 +208,23 @@ const _nextAuth = NextAuth({
 
 export const { handlers, signIn, signOut } = _nextAuth;
 
-// Wrap auth() so it never throws. NextAuth v5 beta throws JWSSignatureVerificationFailed
-// (from `jose`) when it encounters a cookie signed with a stale NEXTAUTH_SECRET, e.g.
-// after a redeployment. Without this, every API route and server component that calls
-// auth() crashes with a 500. All existing imports continue to work without change.
+// Wrap auth() so genuine auth failures never throw but Next.js internals propagate.
+// NextAuth v5 beta can throw JWSSignatureVerificationFailed (from jose) when it
+// encounters a session cookie signed with a stale NEXTAUTH_SECRET. Without a catch,
+// this crashes every API route and server component.
+//
+// IMPORTANT: Next.js uses a special "DynamicServerError" (digest DYNAMIC_*) to signal
+// that a route must be server-rendered rather than statically cached. We must re-throw
+// those so Next.js can still detect dynamic routes correctly. Only swallow auth errors.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const auth = (async (...args: any[]) => {
   try {
     return await (_nextAuth.auth as any)(...args);
-  } catch (e) {
-    console.error("[auth] session decode failed — treating as unauthenticated:", (e as Error)?.message ?? e);
+  } catch (e: any) {
+    // Re-throw Next.js internal dynamic-route signals — do NOT swallow these
+    if (typeof e?.digest === "string" && e.digest.startsWith("DYNAMIC_")) throw e;
+    if (typeof e?.message === "string" && e.message.includes("Dynamic server usage")) throw e;
+    console.error("[auth] session decode failed — treating as unauthenticated:", e?.message ?? e);
     return null;
   }
 }) as unknown as typeof _nextAuth.auth;
