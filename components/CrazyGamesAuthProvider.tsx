@@ -18,13 +18,23 @@ export default function CrazyGamesAuthProvider({ children }: { children: React.R
 
     (async () => {
       const ready = await initSDK();
-      if (!ready) return; // not in CrazyGames iframe
+      if (!ready) {
+        console.log("[CG auth] SDK not ready — running outside CrazyGames");
+        return;
+      }
 
       const token = await getCGUserToken();
-      if (!token) return; // user not logged into CrazyGames — guest mode
+      if (!token) {
+        console.log("[CG auth] No user token — user not logged into CrazyGames");
+        return;
+      }
 
-      await signIn("crazygames", { token, redirect: false });
-    })().catch(() => {});
+      console.log("[CG auth] Got user token, attempting sign-in…");
+      const result = await signIn("crazygames", { token, redirect: false });
+      console.log("[CG auth] signIn result:", JSON.stringify(result));
+    })().catch((e) => {
+      console.error("[CG auth] unexpected error during auto-login:", e);
+    });
   }, [status]);
 
   return <>{children}</>;

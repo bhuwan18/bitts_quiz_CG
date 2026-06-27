@@ -33,7 +33,10 @@ async function verifyCGToken(token: string): Promise<{ userId: string; username?
     if (typeof payload.exp === "number" && payload.exp < Math.floor(Date.now() / 1000)) return null;
 
     const userId = payload.userId as string | undefined;
-    if (!userId) return null;
+    if (!userId) {
+      console.warn("[CG auth] Token payload missing userId — claims:", JSON.stringify(Object.keys(payload)));
+      return null;
+    }
 
     // Attempt RSA-SHA256 signature verification using the CrazyGames public key.
     // If verification fails (e.g. QA/test tokens use a different signing key),
