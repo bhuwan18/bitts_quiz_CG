@@ -24,6 +24,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${jakarta.variable} ${grotesk.variable} font-sans antialiased min-h-screen`}>
+        {/* Suppress CrazyGames SDK "sdkDisabled" errors that fire when the app is
+            accessed outside crazygames.com — without this, the uncaught rejection
+            triggers Next.js's error boundary and crashes the page. */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          window.addEventListener('unhandledrejection', function(e) {
+            if (e.reason && e.reason.code === 'sdkDisabled') e.preventDefault();
+          });
+          window.addEventListener('error', function(e) {
+            if (e.error && e.error.code === 'sdkDisabled') e.preventDefault();
+          });
+        ` }} />
         <Script src="https://sdk.crazygames.com/crazygames-sdk-v3.js" strategy="afterInteractive" />
         <ThemeProvider>
           <SessionProvider>

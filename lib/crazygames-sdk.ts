@@ -46,7 +46,11 @@ export function initSDK(): Promise<boolean> {
     const tryInit = () => {
       const sdk = getSDK();
       if (!sdk) { resolve(false); return; }
-      sdk.init().then(() => resolve(true)).catch(() => resolve(false));
+      try {
+        sdk.init().then(() => resolve(true)).catch(() => resolve(false));
+      } catch {
+        resolve(false);
+      }
     };
 
     if (window.CrazyGames?.SDK) {
@@ -108,7 +112,7 @@ export function showMidgameAd(onMute?: () => void, onUnmute?: () => void): Promi
  */
 export function onSDKAudioChange(callback: (muteAudio: boolean) => void): () => void {
   const sdk = getSDK();
-  if (!sdk) return () => {};
+  if (!sdk?.game) return () => {};
   const handler = (settings: { muteAudio: boolean }) => callback(settings.muteAudio);
   sdk.game.addSettingsChangeListener(handler);
   return () => sdk.game.removeSettingsChangeListener(handler);
