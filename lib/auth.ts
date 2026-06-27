@@ -87,7 +87,34 @@ declare module "next-auth" {
   }
 }
 
+// The game runs inside a CrazyGames cross-origin iframe.
+// Browsers block SameSite=Lax cookies in cross-origin contexts, which means
+// the authjs.csrf-token cookie is never sent → MissingCSRF on every signIn().
+// Fix: use SameSite=None;Secure (requires HTTPS) in production so all auth
+// cookies pass through the iframe. trustHost=true lets NextAuth derive the
+// correct base URL from the request instead of reading NEXTAUTH_URL (which
+// points to localhost in the committed .env file).
+const isProd = process.env.NODE_ENV === "production";
+const cookieOpts = isProd
+  ? {
+      sessionToken: {
+        name: "authjs.session-token",
+        options: { httpOnly: true, sameSite: "none" as const, path: "/", secure: true },
+      },
+      csrfToken: {
+        name: "authjs.csrf-token",
+        options: { httpOnly: true, sameSite: "none" as const, path: "/", secure: true },
+      },
+      callbackUrl: {
+        name: "authjs.callback-url",
+        options: { sameSite: "none" as const, path: "/", secure: true },
+      },
+    }
+  : undefined;
+
 const _nextAuth = NextAuth({
+  trustHost: true,
+  ...(cookieOpts ? { cookies: cookieOpts } : {}),
   adapter: PrismaAdapter(prisma),
   providers: [
     CredentialsProvider({
