@@ -3,6 +3,7 @@ declare global {
     CrazyGames?: {
       SDK: {
         init(): Promise<void>;
+        environment: "initialized" | "uninitialized" | "disabled";
         game: {
           loadingStart(): void;
           loadingStop(): void;
@@ -47,7 +48,13 @@ export function initSDK(): Promise<boolean> {
       const sdk = getSDK();
       if (!sdk) { resolve(false); return; }
       try {
-        sdk.init().then(() => resolve(true)).catch(() => resolve(false));
+        sdk.init()
+          .then(() => {
+            // sdk.init() can resolve even on disabled domains, but leaves
+            // environment !== "initialized" and submodule getters throw.
+            resolve(sdk.environment === "initialized");
+          })
+          .catch(() => resolve(false));
       } catch {
         resolve(false);
       }

@@ -28,11 +28,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             accessed outside crazygames.com — without this, the uncaught rejection
             triggers Next.js's error boundary and crashes the page. */}
         <script dangerouslySetInnerHTML={{ __html: `
+          var CG_SDK_ERRORS = ['sdkDisabled', 'sdkNotInitialized'];
           window.addEventListener('unhandledrejection', function(e) {
-            if (e.reason && e.reason.code === 'sdkDisabled') e.preventDefault();
+            if (e.reason && CG_SDK_ERRORS.indexOf(e.reason.code) !== -1) e.preventDefault();
           });
           window.addEventListener('error', function(e) {
-            if (e.error && e.error.code === 'sdkDisabled') e.preventDefault();
+            if (e.error && CG_SDK_ERRORS.indexOf(e.error.code) !== -1) e.preventDefault();
           });
         ` }} />
         <Script src="https://sdk.crazygames.com/crazygames-sdk-v3.js" strategy="afterInteractive" />
