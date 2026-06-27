@@ -1,11 +1,18 @@
 import webPush from "web-push";
 import { prisma } from "@/lib/db";
 
-webPush.setVapidDetails(
-  process.env.VAPID_EMAIL!,
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!,
-);
+const VAPID_CONFIGURED =
+  !!process.env.VAPID_EMAIL &&
+  !!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY &&
+  !!process.env.VAPID_PRIVATE_KEY;
+
+if (VAPID_CONFIGURED) {
+  webPush.setVapidDetails(
+    process.env.VAPID_EMAIL!,
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+    process.env.VAPID_PRIVATE_KEY!,
+  );
+}
 
 /**
  * Sends a web push notification to all of a user's active browser subscriptions.
@@ -19,6 +26,8 @@ export async function sendPushToUser(
   body: string,
   url = "/notifications",
 ): Promise<{ sent: number; failed: number; total: number }> {
+  if (!VAPID_CONFIGURED) return { sent: 0, failed: 0, total: 0 };
+
   let subs;
   try {
     subs = await prisma.pushSubscription.findMany({ where: { userId } });
