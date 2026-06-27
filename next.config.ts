@@ -2,6 +2,25 @@ import type { NextConfig } from "next";
 import path from "path";
 
 const nextConfig: NextConfig = {
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          // Allow CrazyGames to embed the app in an iframe
+          {
+            key: "Content-Security-Policy",
+            value: "frame-ancestors 'self' https://crazygames.com https://*.crazygames.com",
+          },
+          // Clear X-Frame-Options so the CSP frame-ancestors directive takes precedence
+          {
+            key: "X-Frame-Options",
+            value: "",
+          },
+        ],
+      },
+    ];
+  },
   turbopack: {
     resolveAlias: {
       tailwindcss: path.resolve(__dirname, "node_modules/tailwindcss"),

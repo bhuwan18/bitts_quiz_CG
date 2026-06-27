@@ -4,6 +4,8 @@ declare global {
       SDK: {
         init(): Promise<void>;
         game: {
+          gameLoadingStart(): void;
+          gameLoadingStop(): void;
           gameplayStart(): void;
           gameplayStop(): void;
         };
@@ -62,6 +64,14 @@ export function initSDK(): Promise<boolean> {
   });
 
   return _initPromise;
+}
+
+export function gameLoadingStart() {
+  getSDK()?.game.gameLoadingStart();
+}
+
+export function gameLoadingStop() {
+  getSDK()?.game.gameLoadingStop();
 }
 
 export function gameplayStart() {
