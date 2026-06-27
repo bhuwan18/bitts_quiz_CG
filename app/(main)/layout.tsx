@@ -17,14 +17,21 @@ const nunito = Nunito({ subsets: ["latin"], variable: "--font-nunito", display: 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
 
-  // Guests get a stripped layout — no sidebar, no auth-dependent providers
+  // Guests get the full layout (sidebar + nav) but without auth-dependent providers
   if (!session) {
     return (
       <AudioProvider>
-        <div className={`flex min-h-screen flex-col ${nunito.variable}`} style={{ background: "var(--main-bg)" }}>
-          <GuestBanner />
-          <main className="flex-1">{children}</main>
+        <div className={`flex min-h-screen ${nunito.variable}`}>
+          <div className="hidden md:flex sticky top-0 h-screen">
+            <Sidebar />
+          </div>
+          <div className="flex-1 min-w-0 flex flex-col min-h-screen" style={{ background: "var(--main-bg)" }}>
+            <GuestBanner />
+            <main className="flex-1 pb-20 md:pb-0">{children}</main>
+          </div>
         </div>
+        <MobileNav />
+        <AudioPlayer />
       </AudioProvider>
     );
   }
