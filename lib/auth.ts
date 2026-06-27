@@ -1,9 +1,7 @@
 import NextAuth, { DefaultSession } from "next-auth";
-import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "./db";
-import { sendEmail, ADMIN_EMAIL } from "./email";
 
 declare module "next-auth" {
   interface Session {
@@ -28,33 +26,6 @@ declare module "next-auth" {
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-    CredentialsProvider({
-      id: "test-credentials",
-      credentials: {
-        username: { label: "Username", type: "text" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(credentials) {
-        if (
-          credentials?.username === process.env.TEST_USERNAME &&
-          credentials?.password === process.env.TEST_PASSWORD
-        ) {
-          const testEmail = "test@bittsquiz.internal";
-          let user = await prisma.user.findUnique({ where: { email: testEmail } });
-          if (!user) {
-            user = await prisma.user.create({
-              data: { email: testEmail, name: "Test User", emailVerified: new Date(), isAdmin: false },
-            });
-          }
-          return { id: user.id, email: user.email, name: user.name ?? "Test User", isAdmin: false, isPro: false, isMax: false, isBlacksmith: false, isLocked: false };
-        }
-        return null;
-      },
-    }),
     CredentialsProvider({
       id: "admin-credentials",
       credentials: {
@@ -92,7 +63,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token["isBlacksmith"] = user.isBlacksmith ?? false;
         token["isLocked"] = user.isLocked ?? false;
       }
-      // Refresh user flags on session update or when token lacks flags
       if (trigger === "update" || token["isPro"] === undefined) {
         if (token["id"]) {
           const dbUser = await prisma.user.findUnique({
@@ -123,25 +93,5 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   pages: {
     signIn: "/login",
-  },
-  events: {
-    async createUser({ user }) {
-      // Notify admin when a brand-new user registers
-      await sendEmail({
-        to: ADMIN_EMAIL(),
-        subject: `[BittsQuiz] New player joined: ${user.name ?? user.email}`,
-        html: `
-          <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
-            <h2 style="color:#7c3aed">New Player Joined — BittsQuiz</h2>
-            <table style="width:100%;border-collapse:collapse">
-              <tr><td style="padding:8px;color:#666;width:100px">Name</td><td style="padding:8px;font-weight:600">${user.name ?? "—"}</td></tr>
-              <tr><td style="padding:8px;color:#666">Email</td><td style="padding:8px">${user.email ?? "—"}</td></tr>
-              <tr><td style="padding:8px;color:#666">Joined</td><td style="padding:8px">${new Date().toLocaleString()}</td></tr>
-            </table>
-            <p style="color:#999;font-size:12px;margin-top:16px">BittsQuiz ${new Date().getFullYear()}</p>
-          </div>
-        `,
-      }).catch((err: unknown) => console.error("[auth] Failed to send new user email:", err instanceof Error ? err.message : err));
-    },
   },
 });
