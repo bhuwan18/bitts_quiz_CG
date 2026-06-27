@@ -47,7 +47,12 @@ const OFFER_META: Record<WeeklyOfferType, {
 };
 
 export default async function SplashScreen() {
-  const weeklyOffers = await getWeeklyOffers();
+  let weeklyOffers: Awaited<ReturnType<typeof getWeeklyOffers>> = {};
+  try {
+    weeklyOffers = await getWeeklyOffers();
+  } catch {
+    // DB unavailable — render without offers rather than crashing the layout
+  }
   const festival = getTodaysFestival();
 
   const promos: SplashPromo[] = (Object.entries(weeklyOffers) as [WeeklyOfferType, { discountPercent: number }][])

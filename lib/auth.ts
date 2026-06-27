@@ -169,16 +169,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       if (trigger === "update" || token["isPro"] === undefined) {
         if (token["id"]) {
-          const dbUser = await prisma.user.findUnique({
-            where: { id: token["id"] as string },
-            select: { isAdmin: true, isPro: true, isMax: true, isBlacksmith: true, isLocked: true, proExpiresAt: true, maxExpiresAt: true, blacksmithExpiresAt: true },
-          });
-          if (dbUser) {
-            token["isAdmin"] = dbUser.isAdmin;
-            token["isPro"] = dbUser.isPro && (!dbUser.proExpiresAt || dbUser.proExpiresAt > new Date());
-            token["isMax"] = dbUser.isMax && (!dbUser.maxExpiresAt || dbUser.maxExpiresAt > new Date());
-            token["isBlacksmith"] = dbUser.isBlacksmith && (!dbUser.blacksmithExpiresAt || dbUser.blacksmithExpiresAt > new Date());
-            token["isLocked"] = dbUser.isLocked;
+          try {
+            const dbUser = await prisma.user.findUnique({
+              where: { id: token["id"] as string },
+              select: { isAdmin: true, isPro: true, isMax: true, isBlacksmith: true, isLocked: true, proExpiresAt: true, maxExpiresAt: true, blacksmithExpiresAt: true },
+            });
+            if (dbUser) {
+              token["isAdmin"] = dbUser.isAdmin;
+              token["isPro"] = dbUser.isPro && (!dbUser.proExpiresAt || dbUser.proExpiresAt > new Date());
+              token["isMax"] = dbUser.isMax && (!dbUser.maxExpiresAt || dbUser.maxExpiresAt > new Date());
+              token["isBlacksmith"] = dbUser.isBlacksmith && (!dbUser.blacksmithExpiresAt || dbUser.blacksmithExpiresAt > new Date());
+              token["isLocked"] = dbUser.isLocked;
+            }
+          } catch (e) {
+            // DB error in jwt callback — keep existing token values so auth()
+            // doesn't throw and crash every API route and server component
+            console.error("[auth] jwt DB refresh failed:", e);
           }
         }
       }
