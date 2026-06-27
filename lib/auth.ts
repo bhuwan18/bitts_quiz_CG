@@ -84,7 +84,7 @@ declare module "next-auth" {
   }
 }
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+const _nextAuth = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers: [
     CredentialsProvider({
@@ -205,3 +205,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/login",
   },
 });
+
+export const { handlers, signIn, signOut } = _nextAuth;
+
+// Wrap auth() so it never throws. NextAuth v5 beta throws JWSSignatureVerificationFailed
+// (from `jose`) when it encounters a cookie signed with a stale NEXTAUTH_SECRET, e.g.
+// after a redeployment. Without this, every API route and server component that calls
+// auth() crashes with a 500. All existing imports continue to work without change.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const auth = (async (...args: any[]) => {
+  try {
+    return await (_nextAuth.auth as any)(...args);
+  } catch (e) {
+    console.error("[auth] session decode failed — treating as unauthenticated:", (e as Error)?.message ?? e);
+    return null;
+  }
+}) as unknown as typeof _nextAuth.auth;
