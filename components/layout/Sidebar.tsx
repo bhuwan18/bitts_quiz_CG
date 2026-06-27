@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { useState } from "react";
@@ -26,7 +26,6 @@ import {
   MessageCircle,
   Settings,
   Sparkles,
-  LogOut,
   ChevronLeft,
   ChevronRight,
   Medal,
@@ -261,13 +260,6 @@ export default function Sidebar() {
                   {session.user.name?.[0] ?? "?"}
                 </div>
               )}
-              <button
-                onClick={() => signOut({ callbackUrl: "/login" })}
-                title="Sign out"
-                className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-              >
-                <LogOut size={15} />
-              </button>
             </div>
           ) : (
             /* Expanded: full user row */
@@ -297,13 +289,6 @@ export default function Sidebar() {
                   <p className="text-xs text-gray-500 truncate">{session.user.email}</p>
                 </div>
               </div>
-              <button
-                onClick={() => signOut({ callbackUrl: "/login" })}
-                className="w-full flex items-center justify-center gap-2 text-xs text-gray-500 hover:text-red-400 py-2 transition-colors hover:bg-red-500/10 rounded-lg"
-              >
-                <LogOut size={14} />
-                Sign out
-              </button>
             </>
           )}
         </div>

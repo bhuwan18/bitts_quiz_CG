@@ -5,8 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useUnreadCount } from "@/components/layout/NotificationsProvider";
 import { useHasNewFeed } from "@/components/layout/FeedProvider";
-import { useSession, signOut } from "next-auth/react";
-import { useTheme } from "next-themes";
+import { useSession } from "next-auth/react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import {
@@ -21,9 +20,6 @@ import {
   Store,
   Bell,
   Rss,
-  Moon,
-  Sun,
-  LogOut,
   Menu,
   X,
   ArrowLeftRight,
@@ -52,8 +48,6 @@ export default function MobileNav() {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { data: session } = useSession();
-  const { theme, setTheme } = useTheme();
-  const isLight = theme === "light";
 
   const user = session?.user as { isAdmin?: boolean; isPro?: boolean; isMax?: boolean; isBlacksmith?: boolean } | undefined;
   const isAdmin = !!user?.isAdmin;
@@ -139,26 +133,6 @@ export default function MobileNav() {
               </div>
             </div>
 
-            {/* Theme toggle + Sign out */}
-            <div className="flex gap-2 mt-3">
-              <button
-                onClick={() => setTheme(isLight ? "dark" : "light")}
-                className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium bg-white/5 text-gray-300 hover:bg-white/10 transition-colors border border-white/10"
-              >
-                {isLight
-                  ? <Moon size={15} className="text-indigo-400" />
-                  : <Sun size={15} className="text-yellow-400" />
-                }
-                <span>{isLight ? "Dark Mode" : "Light Mode"}</span>
-              </button>
-              <button
-                onClick={() => signOut({ callbackUrl: "/login" })}
-                className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors border border-red-500/20"
-              >
-                <LogOut size={15} />
-                <span>Sign Out</span>
-              </button>
-            </div>
           </div>
         )}
 
