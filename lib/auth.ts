@@ -2,10 +2,9 @@ import NextAuth, { DefaultSession } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "./db";
-import { createVerify, createPublicKey } from "crypto";
-
-// Module-level cache — public key is static; refetch after 1 hour
-let _cgPublicKey: ReturnType<typeof createPublicKey> | null = null;
+// Module-level cache for the CrazyGames RSA public key — lazily populated
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _cgPublicKey: any = null;
 let _cgPublicKeyFetchedAt = 0;
 
 async function getCGPublicKey() {
@@ -14,6 +13,8 @@ async function getCGPublicKey() {
   const res = await fetch("https://sdk.crazygames.com/publicKey.json", { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to fetch CG public key");
   const data = await res.json() as { publicKey: string };
+  // Lazy-import crypto so the module-level import never fails in restricted runtimes
+  const { createPublicKey } = await import("node:crypto");
   _cgPublicKey = createPublicKey({ key: data.publicKey, format: "pem", type: "pkcs1" });
   _cgPublicKeyFetchedAt = now;
   return _cgPublicKey;
@@ -44,6 +45,7 @@ async function verifyCGToken(token: string): Promise<{ userId: string; username?
         const signingInput = `${parts[0]}.${parts[1]}`;
         const signature = Buffer.from(parts[2], "base64url");
         const publicKey = await getCGPublicKey();
+        const { createVerify } = await import("node:crypto");
         const verifier = createVerify("RSA-SHA256");
         verifier.update(signingInput);
         if (!verifier.verify(publicKey, signature)) {
