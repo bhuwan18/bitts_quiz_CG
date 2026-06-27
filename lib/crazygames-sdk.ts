@@ -4,11 +4,13 @@ declare global {
       SDK: {
         init(): Promise<void>;
         game: {
-          gameLoadingStart(): void;
-          gameLoadingStop(): void;
+          loadingStart(): void;
+          loadingStop(): void;
           gameplayStart(): void;
           gameplayStop(): void;
-          addEventHandler(event: "mute" | "unmute", callback: () => void): void;
+          settings: { muteAudio: boolean; disableChat: boolean };
+          addSettingsChangeListener(callback: (settings: { muteAudio: boolean; disableChat: boolean }) => void): void;
+          removeSettingsChangeListener(callback: (settings: { muteAudio: boolean; disableChat: boolean }) => void): void;
         };
         ad: {
           requestAd(
@@ -68,11 +70,11 @@ export function initSDK(): Promise<boolean> {
 }
 
 export function gameLoadingStart() {
-  getSDK()?.game.gameLoadingStart();
+  getSDK()?.game.loadingStart();
 }
 
 export function gameLoadingStop() {
-  getSDK()?.game.gameLoadingStop();
+  getSDK()?.game.loadingStop();
 }
 
 export function gameplayStart() {
@@ -99,19 +101,26 @@ export function showMidgameAd(onMute?: () => void, onUnmute?: () => void): Promi
   });
 }
 
-/** Register a callback for when the CrazyGames platform mutes the game. */
-export function onSDKMute(callback: () => void) {
-  getSDK()?.game.addEventHandler("mute", callback);
+/**
+ * Registers a listener for the CrazyGames platform audio toggle.
+ * The callback receives true when muted, false when unmuted.
+ * Returns a cleanup function to remove the listener.
+ */
+export function onSDKAudioChange(callback: (muteAudio: boolean) => void): () => void {
+  const sdk = getSDK();
+  if (!sdk) return () => {};
+  const handler = (settings: { muteAudio: boolean }) => callback(settings.muteAudio);
+  sdk.game.addSettingsChangeListener(handler);
+  return () => sdk.game.removeSettingsChangeListener(handler);
 }
 
-/** Register a callback for when the CrazyGames platform unmutes the game. */
-export function onSDKUnmute(callback: () => void) {
-  getSDK()?.game.addEventHandler("unmute", callback);
-}
-
+/** Returns the CrazyGames user token if the user is logged in to CrazyGames, or null. */
 export async function getCGUserToken(): Promise<string | null> {
   try {
-    return await getSDK()?.user.getUserToken() ?? null;
+    const sdk = getSDK();
+    if (!sdk) return null;
+    if (!sdk.user.isUserAccountAvailable) return null;
+    return await sdk.user.getUserToken() ?? null;
   } catch {
     return null;
   }
